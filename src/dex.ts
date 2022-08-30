@@ -61,7 +61,12 @@ const tagNames: Dict<string> = {
 	'dbl': 'DBL',
 	'duu': 'DUU',
 	'dnu': 'DNU',
+	'nduber': 'ND Uber',
+	'ndou': 'ND OU',
 	'nduubl': 'ND UUBL',
+	'nduu': 'ND UU',
+	'ndrubl': 'ND RUBL',
+	'ndru': 'ND RU',
 	'mega': 'Mega',
 	'glitch': 'Glitch',
 	'past': 'Past',
@@ -286,6 +291,7 @@ export class Dex {
 	private readonly moveCache: Dict<IMove> = Object.create(null);
 	private movesList: readonly IMove[] | null = null;
 	private readonly moveAvailbilityCache: Dict<number> = Object.create(null);
+	private readonly moveAvailbilityPokemonCache: Dict<string[]> = Object.create(null);
 	private readonly natureCache: Dict<INature> = Object.create(null);
 	private readonly pokemonCache: Dict<IPokemon> = Object.create(null);
 	private pokemonList: readonly IPokemon[] | null = null;
@@ -698,6 +704,16 @@ export class Dex {
 		return this.moveAvailbilityCache[move.id];
 	}
 
+	/**Excludes Smeargle for ease of use with `Dex.isEvolutionFamily()` */
+	getMoveAvailabilityPokemon(move: IMove): string[] {
+		if (move.gen > this.gen) throw new Error("Dex.getMoveAvailabilityPokemon called for " + move.name + " in gen " + this.gen);
+		return this.moveAvailbilityPokemonCache[move.id];
+	}
+
+	isSignatureMove(move: IMove): boolean {
+		return move.id === 'volttackle' || this.isEvolutionFamily(this.getMoveAvailabilityPokemon(move));
+	}
+
 	/*
 		Pokemon
 	*/
@@ -724,6 +740,17 @@ export class Dex {
 			} else if (pokemon.tier === '(PU)') {
 				pokemon.tier = 'ZU';
 			}
+
+			if (pokemon.doublesTier === '(DUU)') {
+				pokemon.doublesTier = 'DNU';
+			}
+
+			if (pokemon.natDexTier === '(NU)') {
+				pokemon.natDexTier = 'PU';
+			} else if (pokemon.natDexTier === '(PU)') {
+				pokemon.natDexTier = 'ZU';
+			}
+
 			this.pokemonCache[id] = pokemon;
 		}
 
@@ -825,6 +852,12 @@ export class Dex {
 
 		const potentialEvolutionLines: string[][] = this.getAllEvolutionLines(pokemon);
 		const formesToCheck: string[] = [pokemon.name];
+
+		// use base forme by default if included formes aren't specified
+		if (!sortedFormes && pokemon.forme && pokemon.baseSpecies !== pokemon.name && !pokemon.prevo && !pokemon.evos.length) {
+			sortedFormes = [pokemon.baseSpecies];
+		}
+
 		if (sortedFormes) {
 			for (const name of sortedFormes) {
 				const forme = this.getPokemon(name);
@@ -3104,13 +3137,16 @@ export class Dex {
 
 	private cacheMoveAvailability(move: IMove, pokedex: IPokemon[]): void {
 		let availability = 0;
+		const availabilityPokemon: string[] = [];
 		for (const pokemon of pokedex) {
 			if (this.getAllPossibleMoves(pokemon).includes(move.id)) {
 				availability++;
+				if (pokemon.id !== 'smeargle') availabilityPokemon.push(pokemon.name);
 			}
 		}
 
 		this.moveAvailbilityCache[move.id] = availability;
+		this.moveAvailbilityPokemonCache[move.id] = availabilityPokemon;
 	}
 
 	private getAllEvolutionLines(pokemon: IPokemon, prevoList?: string[], evolutionLines?: string[][]): string[][] {
