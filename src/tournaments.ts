@@ -747,6 +747,7 @@ export class Tournaments {
 		if (room.id in this.nextOfficialTournaments) {
 			officialFormat = this.getFormat(this.nextOfficialTournaments[room.id].format, room);
 		}
+
 		const database = Storage.getDatabase(room);
 		const pastTournamentIds: string[] = [];
 		if (database.pastTournaments) {
@@ -758,10 +759,12 @@ export class Tournaments {
 
 		const currentGen = Dex.getCurrentGenString();
 		const formats: IFormat[] = [];
-		for (const i of Dex.getData().formatKeys) {
-			const format = Dex.getExistingFormat(i);
-			if (!format.tournamentPlayable || format.unranked || format.mod !== currentGen ||
-				(officialFormat && officialFormat.id === format.id)) continue;
+		const fromDatabase = database.randomTournamentFormats && database.randomTournamentFormats.length;
+		const possibleFormats: readonly string[] = fromDatabase ? database.randomTournamentFormats! : Dex.getData().formatKeys;
+		for (const i of possibleFormats) {
+			const format = this.getFormat(i, room);
+			if (!format || !format.tournamentPlayable || (officialFormat && officialFormat.id === format.id) ||
+				(!fromDatabase && (format.unranked || format.mod !== currentGen))) continue;
 
 			if (quickFormat) {
 				if (!format.quickFormat) continue;
@@ -1015,10 +1018,16 @@ export class Tournaments {
 		return "";
 	}
 
-	getRibbonHtml(id: string): string {
+	getRibbonHtml(room: Room, id: string): string {
 		if (Config.tournamentTrainerCardRibbons && id in Config.tournamentTrainerCardRibbons) {
 			return '<img src="' + Config.tournamentTrainerCardRibbons[id].source + '" width=' + TRAINER_BADGE_DIMENSIONS + 'px ' +
 				'height=' + TRAINER_BADGE_DIMENSIONS + 'px title="' + Config.tournamentTrainerCardRibbons[id].name + '" />';
+		}
+
+		if (Config.tournamentPointsShopRibbons && room.id in Config.tournamentPointsShopRibbons &&
+			id in Config.tournamentPointsShopRibbons[room.id]) {
+			return '<img src="' + Config.tournamentPointsShopRibbons[room.id][id].source + '" width=' + TRAINER_BADGE_DIMENSIONS + 'px ' +
+				'height=' + TRAINER_BADGE_DIMENSIONS + 'px title="' + Config.tournamentPointsShopRibbons[room.id][id].name + '" />';
 		}
 
 		return "";
@@ -1135,7 +1144,7 @@ export class Tournaments {
 			const ribbonsPerLine = 15;
 			const ribbonsHtml: string[] = [];
 			for (const ribbon of trainerCard.ribbons) {
-				let ribbonHtml = this.getRibbonHtml(ribbon);
+				let ribbonHtml = this.getRibbonHtml(trainerCardRoom, ribbon);
 				if (ribbonHtml) {
 					if (ribbonsHtml.length && ribbonsHtml.length % ribbonsPerLine === 0) ribbonHtml = "<br />" + ribbonHtml;
 					ribbonsHtml.push(ribbonHtml);
@@ -1193,6 +1202,17 @@ export class Tournaments {
 				sendTrainerCard(name);
 			}
 		}
+	}
+
+	hasTournamentPointsShopItems(room: Room): boolean {
+		if (!Config.tournamentPointsShop || !Config.tournamentPointsShop.includes(room.id)) return false;
+
+		const trainerCardRoom = this.getTrainerCardRoom(room);
+		if (!trainerCardRoom) return false;
+
+		if (Config.tournamentPointsShopRibbons && trainerCardRoom.id in Config.tournamentPointsShopRibbons) return true;
+
+		return false;
 	}
 
 	/* eslint-disable @typescript-eslint/no-unnecessary-condition */

@@ -18,7 +18,7 @@ interface IEliminationTree<T> {
 
 interface ITeamChange {
 	additions: number;
-	choices: string[];
+	choices: string[] | undefined;
 	drops: number;
 	evolutions: number;
 }
@@ -40,6 +40,7 @@ export abstract class BattleElimination extends ScriptedGame {
 	advertisementInterval: NodeJS.Timer | null = null;
 	allowsFormes: boolean = true;
 	allowsScouting: boolean = false;
+	allowsSingleStage: boolean = false;
 	availableMatchNodes: EliminationNode<Player>[] = [];
 	banlist: string[] = [];
 	battleFormatId: string = 'ou';
@@ -372,7 +373,7 @@ export abstract class BattleElimination extends ScriptedGame {
 			if (this.requiredTier) {
 				if (pokemon.tier !== this.requiredTier) continue;
 			} else if (fullyEvolved) {
-				if (!pokemon.prevo || pokemon.nfe) continue;
+				if ((!pokemon.prevo && !this.allowsSingleStage) || pokemon.nfe) continue;
 			} else {
 				if (pokemon.prevo || !pokemon.nfe) continue;
 			}
@@ -409,7 +410,8 @@ export abstract class BattleElimination extends ScriptedGame {
 			pokedex.push(pokemon);
 		}
 
-		return pokedex.filter(x => !(x.forme && pokedex.includes(Dex.getExistingPokemon(x.baseSpecies)))).map(x => x.name);
+		const pokedexNames = pokedex.map(x => x.name);
+		return pokedex.filter(x => !(x.forme && pokedexNames.includes(Dex.getExistingPokemon(x.baseSpecies).name))).map(x => x.name);
 	}
 
 	generateBracket(players?: Player[]): void {
@@ -759,7 +761,7 @@ export abstract class BattleElimination extends ScriptedGame {
 		let winnerTeamChanges: ITeamChange[] = [];
 		if (this.getRemainingPlayerCount() > 1 && (this.additionsPerRound || this.dropsPerRound || this.evolutionsPerRound)) {
 			let currentTeamLength: number;
-			const roundTeamLengthChange = this.additionsPerRound + this.dropsPerRound;
+			const roundTeamLengthChange = this.additionsPerRound + (-1 * this.dropsPerRound);
 			const addingPokemon = roundTeamLengthChange > 0;
 			const droppingPokemon = roundTeamLengthChange < 0;
 			const previousRounds = winner.round! - 1;
@@ -771,22 +773,31 @@ export abstract class BattleElimination extends ScriptedGame {
 				currentTeamLength = this.startingTeamsLength;
 			}
 
-			const dropsThisRound = Math.min(this.dropsPerRound, currentTeamLength - (this.additionsPerRound ? 0 : 1));
-			const additionsThisRound = Math.min(this.additionsPerRound, 6 - (currentTeamLength - dropsThisRound));
+			let dropsThisRound = this.dropsPerRound;
+			let additionsThisRound = this.additionsPerRound;
+			while (currentTeamLength + additionsThisRound - dropsThisRound < 1) {
+				dropsThisRound--;
+			}
+
+			while (currentTeamLength + additionsThisRound - dropsThisRound > 6) {
+				additionsThisRound--;
+			}
 
 			if (additionsThisRound || dropsThisRound || this.evolutionsPerRound) {
-				if (!loserTeam) {
-					loserTeam = this.getRandomTeam(loser);
-					this.debugLog(winner.name + " choices from " + loser.name + "'s team (random): " + loserTeam.join(", "));
-				} else {
-					if ((addingPokemon || droppingPokemon) && loserTeam.length < currentTeamLength) {
-						const originalTeam = loserTeam;
-						loserTeam = this.getRandomTeamIncluding(loser, loserTeam);
-
-						this.debugLog(winner.name + " choices from " + loser.name + "'s team (random including " +
-							originalTeam.join(", ") + "): " + loserTeam.join(", "));
+				if (additionsThisRound) {
+					if (!loserTeam) {
+						loserTeam = this.getRandomTeam(loser);
+						this.debugLog(winner.name + " choices from " + loser.name + "'s team (random): " + loserTeam.join(", "));
 					} else {
-						this.debugLog(winner.name + " choices from " + loser.name + "'s team: " + loserTeam.join(", "));
+						if (loserTeam.length < currentTeamLength) {
+							const originalTeam = loserTeam;
+							loserTeam = this.getRandomTeamIncluding(loser, loserTeam);
+
+							this.debugLog(winner.name + " choices from " + loser.name + "'s team (random including " +
+								originalTeam.join(", ") + "): " + loserTeam.join(", "));
+						} else {
+							this.debugLog(winner.name + " choices from " + loser.name + "'s team: " + loserTeam.join(", "));
+						}
 					}
 				}
 
@@ -800,7 +811,7 @@ export abstract class BattleElimination extends ScriptedGame {
 				this.debugLog(winner.name + " team changes round " + winner.round + ": " + JSON.stringify(teamChanges));
 				winnerTeamChanges.push(teamChanges);
 
-				this.updatePossibleTeams(winner, loserTeam);
+				this.updatePossibleTeams(winner, loserTeam, teamChanges);
 
 				this.debugLog(winner.name + " new possible teams after win : " +
 					JSON.stringify(this.possibleTeams.get(winner)!.join(" | ")));
@@ -1024,14 +1035,14 @@ export abstract class BattleElimination extends ScriptedGame {
 
 				if (teamChange.additions) {
 					roundChanges += "<li>";
-					const addAll = teamChange.choices.length <= teamChange.additions;
+					const addAll = teamChange.choices!.length <= teamChange.additions;
 					if (addAll) {
 						roundChanges += (pastTense ? "Added" : "Add") + " the following to your team:";
 					} else {
 						roundChanges += (pastTense ? "Chose" : "Choose") + " " + teamChange.additions + " of the following " +
 							"to add to your team:";
 					}
-					roundChanges += "<br />" + Tools.joinList(this.getPokemonIcons(teamChange.choices), undefined, undefined,
+					roundChanges += "<br />" + Tools.joinList(this.getPokemonIcons(teamChange.choices!), undefined, undefined,
 						addAll ? "and" : "or") + "</li>";
 				}
 
@@ -1224,7 +1235,7 @@ export abstract class BattleElimination extends ScriptedGame {
 	}
 
 	giveStartingTeam(player: Player): void {
-		const team = this.getStartingTeam().filter(x => !!x);
+		const team: readonly string[] = this.getStartingTeam().filter(x => !!x);
 		if (team.length < this.startingTeamsLength) throw new Error("Out of Pokemon to give (" + player.name + ")");
 
 		const formeCombinations = Dex.getFormeCombinations(team, this.battleFormat.usablePokemon);
@@ -1236,7 +1247,7 @@ export abstract class BattleElimination extends ScriptedGame {
 			this.possibleTeams.set(player, formeCombinations);
 
 			if (this.firstRoundByeAdditions.has(player)) {
-				this.updatePossibleTeams(player, this.firstRoundByeAdditions.get(player)!);
+				this.updatePossibleTeams(player, this.firstRoundByeAdditions.get(player));
 			}
 
 			this.debugLog(player.name + " possible starting teams" + (this.rerolls.has(player) ? " (reroll)" : "") +
@@ -1263,8 +1274,15 @@ export abstract class BattleElimination extends ScriptedGame {
 		};
 	}
 
-	updatePossibleTeams(player: Player, additions: string[]): void {
-		this.possibleTeams.set(player, Dex.getPossibleTeams(this.possibleTeams.get(player)!, additions, this.getPossibleTeamsOptions()));
+	updatePossibleTeams(player: Player, pool: string[] | undefined, roundOptions?: Partial<IGetPossibleTeamsOptions>): void {
+		const formatDefaultOptions = this.getPossibleTeamsOptions();
+		const options = roundOptions ? Object.assign(formatDefaultOptions, roundOptions) : formatDefaultOptions;
+
+		if (!options.additions) options.requiredAddition = false;
+		if (!options.drops) options.requiredDrop = false;
+		if (!options.evolutions) options.requiredEvolution = false;
+
+		this.possibleTeams.set(player, Dex.getPossibleTeams(this.possibleTeams.get(player)!, pool, options));
 	}
 
 	getSignupsHtml(): string {
@@ -2750,20 +2768,26 @@ const tests: GameFileTests<BattleElimination> = {
 
 			let matchesByRound = game.getMatchesByRound();
 			const matchRounds = Object.keys(matchesByRound).sort();
-			for (let i = 1; i <= ((6 - game.startingTeamsLength) / game.additionsPerRound); i++) {
+			const iterations = ((6 - game.startingTeamsLength) / game.additionsPerRound) + 1;
+			for (let i = 1; i <= iterations; i++) {
 				const round = matchRounds[i - 1];
 				if (!round) break;
+
 				const player = matchesByRound[round][0].children![0].user!;
 				for (const match of matchesByRound[round]) {
 					const winner = match.children![0].user!;
 					game.removePlayer(match.children![1].user!.name);
+					if (game.ended) break;
+
 					if (game.additionsPerRound || game.dropsPerRound || game.evolutionsPerRound) {
 						assert(game.possibleTeams.get(winner)!.length);
 					}
 				}
 
-				assertStrictEqual(game.teamChanges.get(player)!.length, i);
-				matchesByRound = game.getMatchesByRound();
+				if (!game.ended) {
+					assertStrictEqual(game.teamChanges.get(player)!.length, i);
+					matchesByRound = game.getMatchesByRound();
+				}
 			}
 		},
 	},
@@ -2783,20 +2807,26 @@ const tests: GameFileTests<BattleElimination> = {
 
 			let matchesByRound = game.getMatchesByRound();
 			const matchRounds = Object.keys(matchesByRound).sort();
-			for (let i = 1; i <= ((game.startingTeamsLength - 1) / game.additionsPerRound); i++) {
+			const iterations = ((game.startingTeamsLength - 1) / game.additionsPerRound) + 1;
+			for (let i = 1; i <= iterations; i++) {
 				const round = matchRounds[i - 1];
 				if (!round) break;
+
 				const player = matchesByRound[round][0].children![0].user!;
 				for (const match of matchesByRound[round]) {
 					const winner = match.children![0].user!;
 					game.removePlayer(match.children![1].user!.name);
+					if (game.ended) break;
+
 					if (game.additionsPerRound || game.dropsPerRound || game.evolutionsPerRound) {
 						assert(game.possibleTeams.get(winner)!.length);
 					}
 				}
 
-				assertStrictEqual(game.teamChanges.get(player)!.length, i);
-				matchesByRound = game.getMatchesByRound();
+				if (!game.ended) {
+					assertStrictEqual(game.teamChanges.get(player)!.length, i);
+					matchesByRound = game.getMatchesByRound();
+				}
 			}
 		},
 	},
