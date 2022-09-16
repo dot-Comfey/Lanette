@@ -1,5 +1,6 @@
 import path = require('path');
 
+import type { GamePageBase } from './html-pages/activity-pages/game-page-base';
 import type { PRNGSeed } from "./lib/prng";
 import { PRNG } from "./lib/prng";
 import type { Player } from "./room-activity";
@@ -32,6 +33,7 @@ export class ScriptedGame extends Game {
 	debugLogWriteCount: number = 0;
 	enabledAssistActions = new Map<Player, boolean>();
 	gameActionLocations = new Map<Player, GameActionLocations>();
+	htmlPages = new Map<Player, GamePageBase>();
 	inactiveRounds: number = 0;
 	inheritedPlayers: boolean = false;
 	internalGame: boolean = false;
@@ -651,12 +653,6 @@ export class ScriptedGame extends Game {
 			}
 		}
 
-		if (this.usesHtmlPage && !this.dontAutoCloseHtmlPages) {
-			for (const i in this.players) {
-				this.players[i].closeHtmlPage();
-			}
-		}
-
 		const now = Date.now();
 
 		if (this.isMiniGame) {
@@ -719,12 +715,6 @@ export class ScriptedGame extends Game {
 			}
 		}
 
-		if (this.usesHtmlPage && !this.dontAutoCloseHtmlPages) {
-			for (const i in this.players) {
-				this.players[i].closeHtmlPage();
-			}
-		}
-
 		this.ended = true;
 		this.deallocate(true);
 	}
@@ -751,6 +741,16 @@ export class ScriptedGame extends Game {
 
 	deallocate(forceEnd: boolean): void {
 		if (!this.ended) this.ended = true;
+
+		if (this.usesHtmlPage && !this.dontAutoCloseHtmlPages) {
+			for (const i in this.players) {
+				this.players[i].closeHtmlPage();
+			}
+
+			this.htmlPages.forEach(htmlPage => {
+				htmlPage.close();
+			});
+		}
 
 		this.cleanupMessageListeners();
 		this.cleanupTimers();
@@ -1049,7 +1049,14 @@ export class ScriptedGame extends Game {
 			}
 		}
 
-		if (this.usesHtmlPage) player.closeHtmlPage();
+		if (this.usesHtmlPage) {
+			player.closeHtmlPage();
+			const htmlPage = this.htmlPages.get(player);
+			if (htmlPage) {
+				htmlPage.close();
+				this.htmlPages.delete(player);
+			}
+		}
 	}
 
 	/** Returns `true` if the player has been inactive for the game's inactive round limit */
@@ -1115,7 +1122,7 @@ export class ScriptedGame extends Game {
 		if (player.sentAssistActions) player.clearPrivateUhtml(uhtmlName);
 	}
 
-	sendPlayerActions(player: Player, html: string): void {
+	getGameActionLocation(player: Player): GameActionLocations {
 		if (this.gameActionType && !this.gameActionLocations.has(player)) {
 			const database = Storage.getDatabase(this.room as Room);
 			if (database.gameScriptedOptions && player.id in database.gameScriptedOptions &&
@@ -1127,7 +1134,11 @@ export class ScriptedGame extends Game {
 			}
 		}
 
-		const location = this.gameActionLocations.get(player) || 'chat';
+		return this.gameActionLocations.get(player) || 'chat';
+	}
+
+	sendPlayerActions(player: Player, html: string): void {
+		const location = this.getGameActionLocation(player);
 		if (location === 'htmlpage') {
 			player.sendHtmlPage(html);
 		} else {
@@ -1288,6 +1299,35 @@ export class ScriptedGame extends Game {
 		}
 
 		return result;
+	}
+
+	sendHtmlPage(player: Player): void {
+		if (this.getHtmlPage) this.getHtmlPage(player).send();
+	}
+
+	sendChatHtmlPage(player: Player): void {
+		if (this.getHtmlPage) {
+			const htmlPage = this.getHtmlPage(player);
+			if (htmlPage.chatUhtmlName) htmlPage.send();
+		}
+	}
+
+	runHtmlPageCommand(target: string, user: User): void {
+		if (!(user.id in this.players)) return;
+
+		const htmlPage = this.htmlPages.get(this.players[user.id]);
+		if (!htmlPage) return;
+
+		const targets = target.split(',');
+		const targetRoom = Rooms.search(targets[0]);
+		targets.shift();
+
+		if (!targetRoom || targetRoom.id !== this.room.id) return;
+
+		const command = Tools.toId(targets[0]);
+		targets.shift();
+
+		htmlPage.tryCommand(command, targets);
 	}
 
 	addBits(user: User | Player, bits: number, noPm?: boolean, achievementBits?: boolean): boolean {
