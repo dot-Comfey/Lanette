@@ -742,14 +742,18 @@ export class ScriptedGame extends Game {
 	deallocate(forceEnd: boolean): void {
 		if (!this.ended) this.ended = true;
 
-		if (this.usesHtmlPage && !this.dontAutoCloseHtmlPages) {
+		if (this.htmlPages.size) {
+			this.htmlPages.forEach(htmlPage => {
+				if (this.dontAutoCloseHtmlPages) {
+					htmlPage.sendClosingSnapshot();
+				} else {
+					htmlPage.close();
+				}
+			});
+		} else if (this.usesHtmlPage) {
 			for (const i in this.players) {
 				this.players[i].closeHtmlPage();
 			}
-
-			this.htmlPages.forEach(htmlPage => {
-				htmlPage.close();
-			});
 		}
 
 		this.cleanupMessageListeners();
@@ -1252,6 +1256,9 @@ export class ScriptedGame extends Game {
 			if (commandDefinition.pmOnly) return false;
 		}
 
+		this.debugLog(user.name + " used the " + (isPm ? "PM " : "") + "command: " + Config.commandCharacter + command +
+			(target ? " " + target : ""));
+
 		let result: GameCommandReturnType = false;
 		try {
 			result = commandDefinition.command.call(this, target, room, user, command, timestamp);
@@ -1301,8 +1308,8 @@ export class ScriptedGame extends Game {
 		return result;
 	}
 
-	sendHtmlPage(player: Player): void {
-		if (this.getHtmlPage) this.getHtmlPage(player).send();
+	sendHtmlPage(player: Player, forceSend?: boolean): void {
+		if (this.getHtmlPage) this.getHtmlPage(player).send(false, forceSend);
 	}
 
 	sendChatHtmlPage(player: Player): void {

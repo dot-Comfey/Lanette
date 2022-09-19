@@ -1,10 +1,10 @@
-import type { Room } from "../../rooms";
 import type { ICustomBorder } from "../../types/storage";
 import type { BorderType } from "../../types/tools";
 import { ColorPicker } from "./color-picker";
 import type { IColorPick } from "./color-picker";
 import { ComponentBase } from "./component-base";
 import type { IComponentProps } from "./component-base";
+import type { HtmlPageBase } from "../html-page-base";
 
 export interface IBorderStyleProps extends IComponentProps {
 	currentBorder: ICustomBorder | undefined;
@@ -22,9 +22,6 @@ export interface IBorderStyleProps extends IComponentProps {
 	onPickType: (type: BorderType) => void;
 }
 
-const borderTypes = Tools.getBorderTypes();
-borderTypes.splice(borderTypes.indexOf('solid'), 1);
-
 const defaultValue = 'default';
 const setColorCommand = 'setcolor';
 const setRadiusCommand = 'setradius';
@@ -34,15 +31,16 @@ const setTypeCommand = 'settype';
 export class BorderStyle extends ComponentBase<IBorderStyleProps> {
 	componentId: string = 'border-style';
 
+	borderTypes: BorderType[];
 	colorPicker: ColorPicker;
 	radius: number | undefined;
 	size: number | undefined;
 	type: BorderType | undefined;
 
-	constructor(room: Room, parentCommandPrefix: string, componentCommand: string, props: IBorderStyleProps) {
-		super(room, parentCommandPrefix, componentCommand, props);
+	constructor(htmlPage: HtmlPageBase, parentCommandPrefix: string, componentCommand: string, props: IBorderStyleProps) {
+		super(htmlPage, parentCommandPrefix, componentCommand, props);
 
-		this.colorPicker = new ColorPicker(room, this.commandPrefix, setColorCommand, {
+		this.colorPicker = new ColorPicker(htmlPage, this.commandPrefix, setColorCommand, {
 			currentPick: props.currentBorder && typeof props.currentBorder.color === 'string' ? props.currentBorder.color : undefined,
 			currentPickObject: props.currentBorder && props.currentBorder.color && typeof props.currentBorder.color !== 'string' ?
 				props.currentBorder.color : undefined,
@@ -59,6 +57,11 @@ export class BorderStyle extends ComponentBase<IBorderStyleProps> {
 		this.radius = props.currentBorder ? props.currentBorder.radius : undefined;
 		this.size = props.currentBorder ? props.currentBorder.size : undefined;
 		this.type = props.currentBorder ? props.currentBorder.type : undefined;
+
+		const borderTypes = Tools.getBorderTypes();
+		borderTypes.splice(borderTypes.indexOf('solid'), 1);
+
+		this.borderTypes = borderTypes;
 	}
 
 	pickColorHueVariation(dontRender?: boolean): void {
@@ -157,7 +160,7 @@ export class BorderStyle extends ComponentBase<IBorderStyleProps> {
 			if (type === defaultValue) {
 				this.clearType();
 			} else {
-				if (!borderTypes.includes(type as BorderType)) {
+				if (!this.borderTypes.includes(type as BorderType)) {
 					return "'" + type + "' is not a valid type.";
 				}
 				this.setType(type as BorderType);
@@ -206,7 +209,7 @@ export class BorderStyle extends ComponentBase<IBorderStyleProps> {
 		html += "Type:&nbsp;";
 		html += this.getQuietPmButton(this.commandPrefix + ", " + setTypeCommand + ", " + defaultValue, "Default",
 			{selectedAndDisabled: !this.type});
-		for (const borderType of borderTypes) {
+		for (const borderType of this.borderTypes) {
 			html += "&nbsp;" + this.getQuietPmButton(this.commandPrefix + ", " + setTypeCommand + ", " + borderType, borderType,
 				{selectedAndDisabled: this.type === borderType});
 		}
