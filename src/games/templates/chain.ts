@@ -105,7 +105,10 @@ export abstract class Chain extends ScriptedGame {
 			this.linkEnds[i] = linkEndsByName[i].length;
 		}
 
-		if (this.options.freejoin) this.timeout = setTimeout(() => this.nextRound(), 5000);
+		this.say("**This is an entirely automated game of UPC. I recommend not trying automated hosts yourself unless you know how to set it up.**");
+		this.say("**Scorecap of 30, one winner, good luck and have fun!**");
+
+		if (this.options.freejoin) this.timeout = setTimeout(() => this.nextRound(), 10);
 	}
 
 	onStart(): void {
@@ -330,14 +333,17 @@ const commands: GameCommandDefinitions<Chain> = {
 				let points = this.points.get(player) || 0;
 				points++;
 				this.points.set(player, points);
-				this.say('**' + player.name + '** advances to **' + points + '** point' + (points > 1 ? 's' : '') + '! A possible ' +
-					'answer was __' + possibleLink.name + '__.');
-				if (points === this.options.points) {
-					this.winners.set(player, points);
-					this.end();
+				/*this.say('**' + player.name + '** advances to **' + points + '** point' + (points > 1 ? 's' : '') + '! A possible ' +
+					'answer was __' + possibleLink.name + '__.');*/
+				this.say(".apt " + player.name);
+				if (points === 30) {
+					//this.winners.set(player, points);
+					this.say("**Congratulations to " + player.name + " for winning the game! Thank you for playing.**");
+					this.say(".win " + player.name);
+					//this.end();
 					return true;
 				}
-				this.timeout = setTimeout(() => this.nextRound(), 5000);
+				this.timeout = setTimeout(() => this.nextRound(), 10);
 			} else {
 				this.currentPlayer = null;
 				this.setLink(guess);

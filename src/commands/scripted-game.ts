@@ -820,7 +820,7 @@ export const commands: BaseCommandDefinitions = {
 			if (!Config.allowScriptedGames || !Config.allowScriptedGames.includes(room.id)) {
 				return this.sayError(['disabledGameFeatures', room.title]);
 			}
-			if (!Users.self.hasRank(room, 'bot')) return this.sayError(['missingBotRankForFeatures', 'scripted game']);
+			//if (!Users.self.hasRank(room, 'bot')) return this.sayError(['missingBotRankForFeatures', 'scripted game']);
 
 			if (cmd === 'createskippedcooldowngame' || cmd === 'createpickedskippedcooldowngame') {
 				if (user !== Users.self) return;
