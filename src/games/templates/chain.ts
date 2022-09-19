@@ -26,6 +26,7 @@ export abstract class Chain extends ScriptedGame {
 	survivalRound: number = 0;
 	targetLinkEnds: string[] = [];
 	targetLinkStarts: string[] = [];
+	currentWinners: number = 0;
 
 	// always defined once the game starts
 	currentLink!: Link;
@@ -106,8 +107,9 @@ export abstract class Chain extends ScriptedGame {
 		}
 
 		this.say("**This is an entirely automated game of UPC. I recommend not trying automated hosts yourself unless you know how to set it up.**");
-		this.say("**Scorecap of 30, one winner, good luck and have fun!**");
-
+		this.say("**Scorecap of 5, two winners, use ``.g`` to guess, good luck and have fun!**");
+		
+		//if (this.options.freejoin) this.timeout = setTimeout(() => this.nextRound(), 5000);
 		if (this.options.freejoin) this.timeout = setTimeout(() => this.nextRound(), 10);
 	}
 
@@ -182,7 +184,8 @@ export abstract class Chain extends ScriptedGame {
 		if (this.options.freejoin) {
 			this.resetLinkCounts();
 			this.setLink();
-			text = "The " + this.mascot!.name + " spelled out **" + this.currentLink.name + "**.";
+			//text = "The " + this.mascot!.name + " spelled out **" + this.currentLink.name + "**.";
+			text = "Guess a Pokemon for: **" + this.currentLink.name + "**";
 			this.on(text, () => {
 				if (this.parentGame && this.parentGame.onChildHint) this.parentGame.onChildHint(this.currentLink.name, [], true);
 				this.timeout = setTimeout(() => {
@@ -336,13 +339,19 @@ const commands: GameCommandDefinitions<Chain> = {
 				/*this.say('**' + player.name + '** advances to **' + points + '** point' + (points > 1 ? 's' : '') + '! A possible ' +
 					'answer was __' + possibleLink.name + '__.');*/
 				this.say(".apt " + player.name);
-				if (points === 30) {
+				if (points === 5) {
 					//this.winners.set(player, points);
-					this.say("**Congratulations to " + player.name + " for winning the game! Thank you for playing.**");
-					this.say(".win " + player.name);
-					//this.end();
-					return true;
+					if (this.currentWinners < 1) {
+						this.say(".storewinner " + player.name);
+						this.currentWinners++;
+					} else {
+						this.say("**Congratulations to our two winners this game! Thank you for playing.**");
+						this.say(".win " + player.name);
+						//this.end();
+						return true;
+					}
 				}
+				//this.timeout = setTimeout(() => this.nextRound(), 5000);
 				this.timeout = setTimeout(() => this.nextRound(), 10);
 			} else {
 				this.currentPlayer = null;

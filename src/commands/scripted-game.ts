@@ -893,7 +893,7 @@ export const commands: BaseCommandDefinitions = {
 		},
 		chatOnly: true,
 		aliases: ['cg', 'createrandomgame', 'crg', 'randomgame', 'createpickedgame', 'cpg', 'createskippedcooldowngame',
-			'createpickedskippedcooldowngame'],
+			'createpickedskippedcooldowngame', 'scriptgame'],
 		syntax: ["[game], {option(s)}"],
 		description: ["creates a new scripted game of the given type"],
 	},
