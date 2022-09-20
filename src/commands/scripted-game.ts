@@ -821,6 +821,7 @@ export const commands: BaseCommandDefinitions = {
 				return this.sayError(['disabledGameFeatures', room.title]);
 			}
 			//if (!Users.self.hasRank(room, 'bot')) return this.sayError(['missingBotRankForFeatures', 'scripted game']);
+			this.say(".host " + Users.self.name + ", upc,fj");
 
 			if (cmd === 'createskippedcooldowngame' || cmd === 'createpickedskippedcooldowngame') {
 				if (user !== Users.self) return;

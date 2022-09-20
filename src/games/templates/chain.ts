@@ -26,7 +26,8 @@ export abstract class Chain extends ScriptedGame {
 	survivalRound: number = 0;
 	targetLinkEnds: string[] = [];
 	targetLinkStarts: string[] = [];
-	currentWinners: number = 0;
+	currentWinners: string[] = [];
+	gameScorecap: number = 5;
 
 	// always defined once the game starts
 	currentLink!: Link;
@@ -107,7 +108,7 @@ export abstract class Chain extends ScriptedGame {
 		}
 
 		this.say("**This is an entirely automated game of UPC. I recommend not trying automated hosts yourself unless you know how to set it up.**");
-		this.say("**Scorecap of 5, two winners, use ``.g`` to guess, good luck and have fun!**");
+		this.say("**Scorecap of " + this.gameScorecap + ", runs for 20 minutes, use ``.g`` to guess, good luck and have fun!**");
 		
 		//if (this.options.freejoin) this.timeout = setTimeout(() => this.nextRound(), 5000);
 		if (this.options.freejoin) this.timeout = setTimeout(() => this.nextRound(), 10);
@@ -237,7 +238,7 @@ export abstract class Chain extends ScriptedGame {
 	}
 
 	onEnd(): void {
-		if (this.options.freejoin) {
+		/*if (this.options.freejoin) {
 			this.convertPointsToBits();
 		} else {
 			for (const i in this.players) {
@@ -246,9 +247,18 @@ export abstract class Chain extends ScriptedGame {
 				this.winners.set(player, 1);
 				this.addBits(player, 500);
 			}
+		}*/
+
+		if (this.currentWinners.length) {
+			this.say("**Congratulations to our winners this game! Thank you for playing.**");
+			this.say(".win " + this.currentWinners);
+			this.say(".abits 200, " + this.currentWinners);
+			this.say(".abits 500, " + this.currentWinners[0]);
+		} else {
+			this.say("**No one reached the scorecap!**");
 		}
 
-		this.announceWinners();
+		//this.announceWinners();
 	}
 
 	markLinkUsed(linkStarts: string[], linkEnds: string[]): void {
@@ -334,23 +344,20 @@ const commands: GameCommandDefinitions<Chain> = {
 				this.targetLinkEnds = [];
 				const player = this.createPlayer(user) || this.players[user.id];
 				let points = this.points.get(player) || 0;
-				points++;
+				if (points < this.gameScorecap) {
+					points++;
+					this.say(".apt " + player.name);
+					if (points === this.gameScorecap) {
+						//this.winners.set(player, points);
+						this.currentWinners.push(player.name);
+						this.say(player.name + " has reached the scorecap!");
+					}
+				} else {
+					this.say(player.name + " has already reached the scorecap. Starting another round.");
+				}
 				this.points.set(player, points);
 				/*this.say('**' + player.name + '** advances to **' + points + '** point' + (points > 1 ? 's' : '') + '! A possible ' +
 					'answer was __' + possibleLink.name + '__.');*/
-				this.say(".apt " + player.name);
-				if (points === 5) {
-					//this.winners.set(player, points);
-					if (this.currentWinners < 1) {
-						this.say(".storewinner " + player.name);
-						this.currentWinners++;
-					} else {
-						this.say("**Congratulations to our two winners this game! Thank you for playing.**");
-						this.say(".win " + player.name);
-						//this.end();
-						return true;
-					}
-				}
 				//this.timeout = setTimeout(() => this.nextRound(), 5000);
 				this.timeout = setTimeout(() => this.nextRound(), 10);
 			} else {
@@ -361,6 +368,13 @@ const commands: GameCommandDefinitions<Chain> = {
 			return true;
 		},
 		aliases: ['g'],
+	},
+	gameend: {
+		command(target, room, user) {
+			if (!user.isDeveloper()) return false;
+			this.end();
+			return true;
+		},
 	},
 };
 
