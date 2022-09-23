@@ -107,8 +107,7 @@ export const commands: BaseCommandDefinitions = {
 			if (!Config.allowUserHostedGames || !Config.allowUserHostedGames.includes(room.id)) {
 				return this.sayError(['disabledUserHostedGameFeatures', room.title]);
 			}
-			//if (!Users.self.hasRank(room, 'bot')) return this.sayError(['missingBotRankForFeatures', 'user-hosted game']);
-			if (!Users.self.hasRank(room, 'bot')) return false;
+			if (!Users.self.hasRank(room, 'bot')) return this.sayError(['missingBotRankForFeatures', 'user-hosted game']);
 
 			const targets = target.split(",");
 			const host = Users.get(targets[0]);

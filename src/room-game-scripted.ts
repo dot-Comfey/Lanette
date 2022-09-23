@@ -428,7 +428,7 @@ export class ScriptedGame extends Game {
 		this.signupsTime = Date.now();
 		this.signupsStarted = true;
 
-		/*if (!this.isMiniGame && !this.internalGame) {
+		if (!this.isMiniGame && !this.internalGame) {
 			this.showSignupsHtml = true;
 			this.sayUhtml(this.uhtmlBaseName + "-description", this.getSignupsHtml());
 			if (!this.options.freejoin) this.sayUhtml(this.signupsUhtmlName, this.getSignupsPlayersHtml());
@@ -440,7 +440,7 @@ export class ScriptedGame extends Game {
 			if (this.format.mode) {
 				room.notifyRank("all", room.title + " scripted game", this.name, this.getModeHighlightPhrase());
 			}
-		}*/
+		}
 
 		if (this.shinyMascot) this.say(this.mascot!.name + " is shiny so bits will be doubled!");
 
