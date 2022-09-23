@@ -811,13 +811,6 @@ export const game: IUserHostedFile = {
 			freejoin: true,
 		},
 		{
-			name: "Rock Paras Scizor",
-			aliases: ["RPS"],
-			description: "A Pokemon themed rock paper scissors tournament where typings determine the winner. PM a Pokemon to the host " +
-				"in hopes of having a type advantage over your opponent. More info: " +
-				"https://docs.google.com/document/d/1H6bRZlxJSfNZvqzxnbTyV2RiXABtuVgZdprTNEfn6bk",
-		},
-		{
 			name: "Rotom's Dex Trivia",
 			mascot: "Rotom",
 			description: "A dex entry of a Pokemon will be posted and players have to be first to guess the Pokemon correctly!",
