@@ -141,7 +141,7 @@ export const game: IGameFile<KyuremsSplits> = Games.copyTemplateProperties(quest
 	minigameCommand: 'split',
 	minigameDescription: "Use <code>" + Config.commandCharacter + "g</code> to guess an answer with all of the given letters in that " +
 		"order!",
-	modes: ["abridged", "collectiveteam", "multianswer", "pmtimeattack", "prolix", "spotlightteam", "survival", "timeattack"],
+	modes: ["abridged", "collectiveteam", "elimination", "multianswer", "pmtimeattack", "prolix", "spotlightteam", "survival", "timeattack"],
 	nonTrivialLoadData: true,
 	variants: [
 		{

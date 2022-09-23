@@ -820,7 +820,8 @@ export const commands: BaseCommandDefinitions = {
 			if (!Config.allowScriptedGames || !Config.allowScriptedGames.includes(room.id)) {
 				return this.sayError(['disabledGameFeatures', room.title]);
 			}
-			if (!Users.self.hasRank(room, 'bot')) return this.sayError(['missingBotRankForFeatures', 'scripted game']);
+			//if (!Users.self.hasRank(room, 'bot')) return this.sayError(['missingBotRankForFeatures', 'scripted game']);
+			this.say(".host " + Users.self.name + ", upc,fj");
 
 			if (cmd === 'createskippedcooldowngame' || cmd === 'createpickedskippedcooldowngame') {
 				if (user !== Users.self) return;
@@ -893,7 +894,7 @@ export const commands: BaseCommandDefinitions = {
 		},
 		chatOnly: true,
 		aliases: ['cg', 'createrandomgame', 'crg', 'randomgame', 'createpickedgame', 'cpg', 'createskippedcooldowngame',
-			'createpickedskippedcooldowngame'],
+			'createpickedskippedcooldowngame', 'scriptgame'],
 		syntax: ["[game], {option(s)}"],
 		description: ["creates a new scripted game of the given type"],
 	},

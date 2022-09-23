@@ -226,7 +226,7 @@ export const game: IGameFile<GyaradosShinyHunting> = {
 	freejoin: true,
 	name: "Gyarados' Shiny Hunting",
 	mascot: "Gyarados",
-	modes: ["collectiveteam", "multianswer", "pmtimeattack", "spotlightteam", "survival", "timeattack"],
+	modes: ["collectiveteam", "elimination", "multianswer", "pmtimeattack", "spotlightteam", "survival", "timeattack"],
 	modeProperties: {
 		'survival': {
 			roundTime: 5 * 1000,

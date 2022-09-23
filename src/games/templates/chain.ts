@@ -26,6 +26,8 @@ export abstract class Chain extends ScriptedGame {
 	survivalRound: number = 0;
 	targetLinkEnds: string[] = [];
 	targetLinkStarts: string[] = [];
+	currentWinners: string[] = [];
+	gameScorecap: number = 5;
 
 	// always defined once the game starts
 	currentLink!: Link;
@@ -105,7 +107,11 @@ export abstract class Chain extends ScriptedGame {
 			this.linkEnds[i] = linkEndsByName[i].length;
 		}
 
-		if (this.options.freejoin) this.timeout = setTimeout(() => this.nextRound(), 5000);
+		this.say("**This is an entirely automated game of UPC. I recommend not trying automated hosts yourself unless you know how to set it up.**");
+		this.say("**Scorecap of " + this.gameScorecap + ", runs for 20 minutes, use ``.g`` to guess, good luck and have fun!**");
+		
+		//if (this.options.freejoin) this.timeout = setTimeout(() => this.nextRound(), 5000);
+		if (this.options.freejoin) this.timeout = setTimeout(() => this.nextRound(), 10);
 	}
 
 	onStart(): void {
@@ -179,7 +185,8 @@ export abstract class Chain extends ScriptedGame {
 		if (this.options.freejoin) {
 			this.resetLinkCounts();
 			this.setLink();
-			text = "The " + this.mascot!.name + " spelled out **" + this.currentLink.name + "**.";
+			//text = "The " + this.mascot!.name + " spelled out **" + this.currentLink.name + "**.";
+			text = "Guess a Pokemon for: **" + this.currentLink.name + "**";
 			this.on(text, () => {
 				if (this.parentGame && this.parentGame.onChildHint) this.parentGame.onChildHint(this.currentLink.name, [], true);
 				this.timeout = setTimeout(() => {
@@ -231,7 +238,7 @@ export abstract class Chain extends ScriptedGame {
 	}
 
 	onEnd(): void {
-		if (this.options.freejoin) {
+		/*if (this.options.freejoin) {
 			this.convertPointsToBits();
 		} else {
 			for (const i in this.players) {
@@ -240,9 +247,18 @@ export abstract class Chain extends ScriptedGame {
 				this.winners.set(player, 1);
 				this.addBits(player, 500);
 			}
+		}*/
+
+		if (this.currentWinners.length) {
+			this.say("**Congratulations to our winners this game! Thank you for playing.**");
+			this.say(".win " + this.currentWinners);
+			this.say(".abits 200, " + this.currentWinners);
+			this.say(".abits 500, " + this.currentWinners[0]);
+		} else {
+			this.say("**No one reached the scorecap!**");
 		}
 
-		this.announceWinners();
+		//this.announceWinners();
 	}
 
 	markLinkUsed(linkStarts: string[], linkEnds: string[]): void {
@@ -328,16 +344,22 @@ const commands: GameCommandDefinitions<Chain> = {
 				this.targetLinkEnds = [];
 				const player = this.createPlayer(user) || this.players[user.id];
 				let points = this.points.get(player) || 0;
-				points++;
-				this.points.set(player, points);
-				this.say('**' + player.name + '** advances to **' + points + '** point' + (points > 1 ? 's' : '') + '! A possible ' +
-					'answer was __' + possibleLink.name + '__.');
-				if (points === this.options.points) {
-					this.winners.set(player, points);
-					this.end();
-					return true;
+				if (points < this.gameScorecap) {
+					points++;
+					this.say(".apt " + player.name);
+					if (points === this.gameScorecap) {
+						//this.winners.set(player, points);
+						this.currentWinners.push(player.name);
+						this.say(player.name + " has reached the scorecap!");
+					}
+				} else {
+					this.say(player.name + " has already reached the scorecap. Starting another round.");
 				}
-				this.timeout = setTimeout(() => this.nextRound(), 5000);
+				this.points.set(player, points);
+				/*this.say('**' + player.name + '** advances to **' + points + '** point' + (points > 1 ? 's' : '') + '! A possible ' +
+					'answer was __' + possibleLink.name + '__.');*/
+				//this.timeout = setTimeout(() => this.nextRound(), 5000);
+				this.timeout = setTimeout(() => this.nextRound(), 10);
 			} else {
 				this.currentPlayer = null;
 				this.setLink(guess);
@@ -346,6 +368,13 @@ const commands: GameCommandDefinitions<Chain> = {
 			return true;
 		},
 		aliases: ['g'],
+	},
+	gameend: {
+		command(target, room, user) {
+			if (!user.isDeveloper()) return false;
+			this.end();
+			return true;
+		},
 	},
 };
 
