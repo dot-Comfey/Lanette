@@ -1480,40 +1480,36 @@ export abstract class BattleElimination extends ScriptedGame {
 
 		this.canRejoin = false; // disable rejoins to prevent remainingPlayers from being wrong
 
-		const uhtmlName = this.uhtmlBaseName + '-signups';
-		const html = this.getSignupsHtml();
-		this.onUhtml(uhtmlName, html, () => {
-			if (this.canReroll) {
-				let text = "";
-				if (!this.subRoom) {
-					text += "The " + this.name + " tournament is about to start! ";
-				}
-				text += "There are " + Tools.toDurationString(REROLL_START_DELAY) + " left to PM me the command ``" +
-					Config.commandCharacter + REROLL_COMMAND + "`` to get a new " +
-					(this.startingTeamsLength === 1 ? "starter" : "team") + " (cannot be undone).";
+		this.sayUhtmlChange(this.uhtmlBaseName + '-signups', this.getSignupsHtml());
 
-				if (this.subRoom) {
-					this.subRoom.say(text);
-				} else {
-					this.say(text);
-				}
-
-				if (this.subRoom) {
-					this.startElimination();
-
-					this.timeout = setTimeout(() => {
-						this.canReroll = false;
-						this.updateHtmlPages();
-					}, REROLL_START_DELAY);
-				} else {
-					this.timeout = setTimeout(() => this.startElimination(), REROLL_START_DELAY);
-				}
-			} else {
-				this.startElimination();
+		if (this.canReroll) {
+			let text = "";
+			if (!this.subRoom) {
+				text += "The " + this.name + " tournament is about to start! ";
 			}
-		});
+			text += "There are " + Tools.toDurationString(REROLL_START_DELAY) + " left to PM me the command ``" +
+				Config.commandCharacter + REROLL_COMMAND + "`` to get a new " +
+				(this.startingTeamsLength === 1 ? "starter" : "team") + " (cannot be undone).";
 
-		this.sayUhtmlChange(uhtmlName, html);
+			if (this.subRoom) {
+				this.subRoom.say(text);
+			} else {
+				this.say(text);
+			}
+
+			if (this.subRoom) {
+				this.startElimination();
+
+				this.timeout = setTimeout(() => {
+					this.canReroll = false;
+					this.updateHtmlPages();
+				}, REROLL_START_DELAY);
+			} else {
+				this.timeout = setTimeout(() => this.startElimination(), REROLL_START_DELAY);
+			}
+		} else {
+			this.startElimination();
+		}
 	}
 
 	startElimination(): void {
@@ -2389,7 +2385,7 @@ const tests: GameFileTests<BattleElimination> = {
 			assert(game.pokedex.length);
 			addPlayers(game, game.maxPlayers);
 			assert(game.started);
-			game.startElimination();
+			if (!game.eliminationStarted) game.startElimination();
 		},
 	},
 	'should generate a bracket - 4 players': {
@@ -2579,7 +2575,7 @@ const tests: GameFileTests<BattleElimination> = {
 			game.canReroll = false;
 			addPlayers(game, 4);
 			game.start();
-			game.startElimination();
+			if (!game.eliminationStarted) game.startElimination();
 
 			assert(!game.firstRoundByes.size);
 
@@ -2607,7 +2603,7 @@ const tests: GameFileTests<BattleElimination> = {
 			game.canReroll = false;
 			addPlayers(game, 5);
 			game.start();
-			game.startElimination();
+			if (!game.eliminationStarted) game.startElimination();
 
 			assertStrictEqual(game.firstRoundByes.size, 3);
 			if (game.additionsPerRound || game.dropsPerRound || game.evolutionsPerRound) {
@@ -2647,7 +2643,7 @@ const tests: GameFileTests<BattleElimination> = {
 			game.canReroll = false;
 			addPlayers(game, 6);
 			game.start();
-			game.startElimination();
+			if (!game.eliminationStarted) game.startElimination();
 
 			assertStrictEqual(game.firstRoundByes.size, 2);
 			if (game.additionsPerRound || game.dropsPerRound || game.evolutionsPerRound) {
@@ -2691,7 +2687,7 @@ const tests: GameFileTests<BattleElimination> = {
 			game.canReroll = false;
 			addPlayers(game, 7);
 			game.start();
-			game.startElimination();
+			if (!game.eliminationStarted) game.startElimination();
 
 			assertStrictEqual(game.firstRoundByes.size, 1);
 			if (game.additionsPerRound || game.dropsPerRound || game.evolutionsPerRound) {
@@ -2735,7 +2731,7 @@ const tests: GameFileTests<BattleElimination> = {
 			game.canReroll = false;
 			addPlayers(game, 8);
 			if (!game.started) game.start();
-			game.startElimination();
+			if (!game.eliminationStarted) game.startElimination();
 
 			assert(!game.firstRoundByes.size);
 
@@ -2776,7 +2772,7 @@ const tests: GameFileTests<BattleElimination> = {
 			game.canReroll = false;
 			addPlayers(game, game.maxPlayers);
 			if (!game.started) game.start();
-			game.startElimination();
+			if (!game.eliminationStarted) game.startElimination();
 
 			assert(!game.firstRoundByes.size);
 
@@ -2822,7 +2818,7 @@ const tests: GameFileTests<BattleElimination> = {
 			game.canReroll = false;
 			addPlayers(game, game.maxPlayers);
 			if (!game.started) game.start();
-			game.startElimination();
+			if (!game.eliminationStarted) game.startElimination();
 
 			assert(!game.firstRoundByes.size);
 
@@ -2846,6 +2842,52 @@ const tests: GameFileTests<BattleElimination> = {
 					for (let j = startIndex; j < teamChanges.length; j++) {
 						assert(teamChanges[j].drops >= 0 && teamChanges[j].drops <= game.dropsPerRound);
 						assert(teamChanges[j].additions === 0);
+					}
+
+					assert(game.possibleTeams.get(winner)!.length);
+				}
+
+				if (!game.ended) {
+					assertStrictEqual(game.teamChanges.get(player)!.length, i);
+					matchesByRound = game.getMatchesByRound();
+				}
+			}
+		},
+	},
+	'should give team changes until players have a full team - additionsPerRound and dropsPerRound': {
+		test(game) {
+			this.timeout(15000);
+			if (!game.additionsPerRound || !game.dropsPerRound || (game.maxPlayers !== 32 && game.maxPlayers !== 64)) return;
+
+			disableTournamentProperties(game);
+
+			game.canReroll = false;
+			addPlayers(game, game.maxPlayers);
+			if (!game.started) game.start();
+			if (!game.eliminationStarted) game.startElimination();
+
+			assert(!game.firstRoundByes.size);
+
+			let matchesByRound = game.getMatchesByRound();
+			const matchRounds = Object.keys(matchesByRound).sort();
+			const iterations = ((6 - game.startingTeamsLength) / game.additionsPerRound) + 1;
+			for (let i = 1; i <= iterations; i++) {
+				const round = matchRounds[i - 1];
+				if (!round) break;
+
+				const player = matchesByRound[round][0].children![0].user!;
+				for (const match of matchesByRound[round]) {
+					const winner = match.children![0].user!;
+					let teamChanges = game.teamChanges.get(winner) || [];
+					const startIndex = teamChanges.length;
+
+					game.removePlayer(match.children![1].user!.name);
+					if (game.ended) break;
+
+					teamChanges = game.teamChanges.get(winner)!;
+					for (let j = startIndex; j < teamChanges.length; j++) {
+						assert(teamChanges[j].additions >= 0 && teamChanges[j].additions <= game.additionsPerRound);
+						assert(teamChanges[j].drops >= 0 && teamChanges[j].drops <= game.dropsPerRound);
 					}
 
 					assert(game.possibleTeams.get(winner)!.length);
